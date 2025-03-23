@@ -39,7 +39,10 @@ def encode_categorical_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def encode_target(df: pd.DataFrame) -> pd.DataFrame:
+def prepare_data(data_path: Path) -> pd.DataFrame:
+    df = load_data(data_path)
+    df = encode_categorical_features(df)
+
     def encode_value(x):
         if x <= 100000:
             return 0
@@ -48,18 +51,7 @@ def encode_target(df: pd.DataFrame) -> pd.DataFrame:
         else:
             return 2
 
-    df["Target"] = df["SalePrice"].apply(encode_value)
-    df = df.drop(columns=["SalePrice"])
-    return df
-
-
-def prepare_data(data_path: Path, classification: bool = True) -> pd.DataFrame:
-    df = load_data(data_path)
-    df = encode_categorical_features(df)
-    if classification:
-        df = encode_target(df)
-    else:
-        df = df.rename(columns={"SalePrice": "Target"})
+    df["ClassTarget"] = df["SalePrice"].apply(encode_value)
 
     return df
 
@@ -71,52 +63,46 @@ def compute_class_weights(y: pd.Series) -> dict:
     return class_weights
 
 
-def split_data(
-    df: pd.DataFrame, test_size: float = 0.2
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
-    X = df.drop(columns=["Target"])
-    y = df["Target"]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=42
-    )
-
-    return X_train, X_test, y_train, y_test
-
-
 class HouseDataset(Dataset):
-    def __init__(self, X: pd.DataFrame, y: pd.Series = None):
+    def __init__(self, X: pd.DataFrame, y_reg: pd.Series = None, y_class: pd.Series = None):
+        """
+        Dataset obsługujący zarówno regresję, jak i klasyfikację.
+        """
         self.X = X
-        self.y = y
+        self.y_reg = y_reg
+        self.y_class = y_class
 
     def __len__(self):
         return len(self.X)
 
     def __getitem__(self, idx):
-        if self.y is None:
-            return torch.tensor(self.X.iloc[idx].values, dtype=torch.float32)
-        return torch.tensor(self.X.iloc[idx].values, dtype=torch.float32), torch.tensor(
-            self.y.iloc[idx], dtype=torch.long
-        )
+        inputs = torch.tensor(self.X.iloc[idx].values, dtype=torch.float32)
+        if self.y_reg is not None and self.y_class is not None:
+            target_reg = torch.tensor(self.y_reg.iloc[idx], dtype=torch.float32)
+            target_class = torch.tensor(self.y_class.iloc[idx], dtype=torch.long)
+            return inputs, target_reg, target_class
+        return inputs
 
 
 def create_data_loaders(
     data_path: Path,
     batch_size: int = 32,
-    classification: bool = True,
     val_size: float = 0.2,
 ) -> tuple[DataLoader, DataLoader, torch.Tensor]:
-    df = prepare_data(data_path, classification)
+    df = prepare_data(data_path)
 
-    class_weights = torch.tensor([0])
+    X = df.drop(columns=["SalePrice", "ClassTarget"])
+    y_reg = df["SalePrice"]
+    y_class = df["ClassTarget"]
 
-    if classification:
-        class_weights = compute_class_weights(df["Target"])
+    X_train, X_val, y_reg_train, y_reg_val, y_class_train, y_class_val = train_test_split(
+        X, y_reg, y_class, test_size=val_size, random_state=42
+    )
 
-    X_train, X_val, y_train, y_val = split_data(df, val_size)
+    class_weights = compute_class_weights(y_class)
 
-    train_dataset = HouseDataset(X_train, y_train)
-    val_dataset = HouseDataset(X_val, y_val)
+    train_dataset = HouseDataset(X_train, y_reg_train, y_class_train)
+    val_dataset = HouseDataset(X_val, y_reg_val, y_class_val)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
