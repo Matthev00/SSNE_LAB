@@ -35,6 +35,10 @@ def encode_categorical_features(df: pd.DataFrame) -> pd.DataFrame:
     df["TimeToBusStop"] = df["TimeToBusStop"].map(time_to_bus_stop_mapping)
     df["TimeToSubway"] = df["TimeToSubway"].map(time_to_subway_mapping)
 
+    df["TotalParking"] = df["N_Parkinglot(Ground)"] + df["N_Parkinglot(Basement)"]
+    df["ParkingRatio"] = df["TotalParking"] / df["Size(sqf)"]
+
+
     df = df.astype({col: "int" for col in df.select_dtypes("bool").columns})
 
     return df
