@@ -1,7 +1,9 @@
 import torch
 import wandb
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, confusion_matrix
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 def train(
@@ -11,6 +13,7 @@ def train(
     optimizer: torch.optim.Optimizer,
     loss_fn: torch.nn.Module,
     epochs: int,
+    log_confusion_matrix: bool = False,
     device: str = "cuda",
 ) -> dict[str, list[float]]:
 
@@ -22,7 +25,7 @@ def train(
             loss_fn=loss_fn,
             device=device,
         )
-        val_loss, val_accuracy, val_f1 = test_step(
+        val_loss, val_accuracy, val_f1, all_targets, all_predictions  = test_step(
             model=model, val_dataloader=val_dataloader, loss_fn=loss_fn, device=device
         )
         wandb.log(
@@ -36,6 +39,17 @@ def train(
                 "Validation F1": val_f1,
             }
         )
+
+    if log_confusion_matrix:
+        cm = confusion_matrix(all_targets, all_predictions)
+        plt.figure(figsize=(10, 7))
+        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
+        plt.xlabel("Predicted")
+        plt.ylabel("True")
+        plt.title("Confusion Matrix")
+        plt.savefig("confusion_matrix.png")
+        plt.close()
+        wandb.log({"Confusion Matrix": wandb.Image("confusion_matrix.png")})
 
     wandb.finish()
 
@@ -108,4 +122,4 @@ def test_step(
     f1 = f1_score(all_targets, all_predictions, average="weighted")
     total_loss /= len(val_dataloader)
 
-    return total_loss, accuracy, f1
+    return total_loss, accuracy, f1, all_targets, all_predictions
