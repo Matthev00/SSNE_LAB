@@ -3,6 +3,7 @@ from pathlib import Path
 import pandas as pd
 import torch
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader, Dataset
 
 
@@ -37,6 +38,13 @@ def encode_categorical_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.astype({col: "int" for col in df.select_dtypes("bool").columns})
 
     return df
+
+
+def scale_features(X_train: pd.DataFrame, X_val: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    scaler = StandardScaler()
+    X_train_scaled = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
+    X_val_scaled = pd.DataFrame(scaler.transform(X_val), columns=X_val.columns)
+    return X_train_scaled, X_val_scaled
 
 
 def prepare_data(data_path: Path) -> pd.DataFrame:
@@ -100,6 +108,7 @@ def create_data_loaders(
     )
 
     class_weights = compute_class_weights(y_class)
+    X_train, X_val = scale_features(X_train, X_val)
 
     train_dataset = HouseDataset(X_train, y_reg_train, y_class_train)
     val_dataset = HouseDataset(X_val, y_reg_val, y_class_val)
