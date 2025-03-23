@@ -46,7 +46,7 @@ def prepare_data(data_path: Path) -> pd.DataFrame:
     def encode_value(x):
         if x <= 100000:
             return 0
-        elif 100000 < x <= 250000:
+        elif 100000 < x <= 350000:
             return 1
         else:
             return 2
