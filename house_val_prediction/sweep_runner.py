@@ -2,29 +2,35 @@ import wandb
 from main import main
 
 sweep_config = {
-    "method": "grid",
+    "method": "grid",  # Możesz zmienić na "random" dla losowego przeszukiwania
     "metric": {
         "name": "Validation F1",
         "goal": "maximize",
     },
     "parameters": {
+        "MODEL_TYPE": {
+            "values": ["classifier", "regressor", "hybrid"]
+        },
+        "BATCH_NORM": {
+            "values": [True, False]
+        },
         "HIDDEN_DIM": {
-            "values": [32, 64, 128]
+            "value": [32, 64, 128]
         },
         "NUM_LAYERS": {
-            "values": [1, 2, 3]
+            "value": [1, 2, 3]
         },
         "DROPOUT": {
-            "values": [0.2, 0.3, 0.4, 0.5]
+            "value": [0.2, 0.3, 0.4, 0.5]
         },
         "LR": {
-            "values": [0.001, 0.0005]
+            "value": [0.001, 0.0005]
         },
         "WEIGHT_DECAY": {
-            "values": [0.0, 0.01]
+            "value": [0.0, 0.01]
         },
         "BATCH_SIZE": {
-            "values": [32, 64]
+            "value": [32, 64]
         },
         "epochs": {
             "value": 10

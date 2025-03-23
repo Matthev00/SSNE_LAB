@@ -3,7 +3,7 @@ import wandb
 
 from data_preparation import create_data_loaders
 from engine import train
-from model import HouseNet
+from model import HouseNet, HybridNet
 
 
 def main():
@@ -12,7 +12,8 @@ def main():
     wandb.init()
     config = wandb.config
 
-    CLS = True
+    MODEL_TYPE = config.MODEL_TYPE  # Możliwe wartości: "classifier", "regressor", "hybrid"
+    BATCH_NORM = config.BATCH_NORM  
 
     EPOCHS = config.epochs
     HIDDEN_DIM = config.HIDDEN_DIM
@@ -21,58 +22,92 @@ def main():
     BATCH_SIZE = config.BATCH_SIZE
     LR = config.LR
     WEIGHT_DECAY = config.WEIGHT_DECAY
-    
-    CONFUSION_MATRIX = True
+
     DATA_PATH = "train_data.csv"
-    OUTPUT_SIZE = 3 if CLS else 1
     INPUT_SIZE = 27
     VAL_SIZE = 0.2
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
+
     train_dataloader, val_dataloader, class_weights = create_data_loaders(
         data_path=DATA_PATH,
         batch_size=BATCH_SIZE,
-        classification=CLS,
         val_size=VAL_SIZE,
     )
 
-    model = HouseNet(
-        input_size=INPUT_SIZE,
-        hidden_dim=HIDDEN_DIM,
-        num_layers=NUM_LAYERS,
-        output_size=OUTPUT_SIZE,
-        dropout=DROPOUT,
-    ).to(device)
+    if MODEL_TYPE == "classifier":
+        OUTPUT_SIZE = 3
+        model = HouseNet(
+            input_size=INPUT_SIZE,
+            hidden_dim=HIDDEN_DIM,
+            num_layers=NUM_LAYERS,
+            output_size=OUTPUT_SIZE,
+            dropout=DROPOUT,
+            batch_norm=BATCH_NORM,
+        ).to(device)
+        loss_fn = torch.nn.CrossEntropyLoss(weight=class_weights).to(device)
 
-    loss_fn = torch.nn.CrossEntropyLoss(weight=class_weights).to(device)
+        def train_fn():
+            train(
+                model=model,
+                train_dataloader=train_dataloader,
+                val_dataloader=val_dataloader,
+                optimizer=optimizer,
+                loss_fn=loss_fn,
+                epochs=EPOCHS,
+                device=device,
+                model_type=MODEL_TYPE
+            )
+
+    elif MODEL_TYPE == "regressor":
+        OUTPUT_SIZE = 1
+        model = HouseNet(
+            input_size=INPUT_SIZE,
+            hidden_dim=HIDDEN_DIM,
+            num_layers=NUM_LAYERS,
+            output_size=OUTPUT_SIZE,
+            dropout=DROPOUT,
+            batch_norm=BATCH_NORM,
+        ).to(device)
+        loss_fn = torch.nn.MSELoss().to(device)
+
+        def train_fn():
+            train(
+                model=model,
+                train_dataloader=train_dataloader,
+                val_dataloader=val_dataloader,
+                optimizer=optimizer,
+                loss_fn=loss_fn,
+                epochs=EPOCHS,
+                device=device,
+                model_type=MODEL_TYPE
+            )
+
+    elif MODEL_TYPE == "hybrid":
+        model = HybridNet(
+            input_size=INPUT_SIZE,
+            hidden_dim=HIDDEN_DIM,
+            num_layers=NUM_LAYERS,
+            dropout=DROPOUT,
+            batch_norm=BATCH_NORM,
+        ).to(device)
+        loss_fn_reg = torch.nn.MSELoss().to(device)
+        loss_fn_class = torch.nn.CrossEntropyLoss(weight=class_weights).to(device)
+
+        def train_fn():
+            train(
+                model=model,
+                train_dataloader=train_dataloader,
+                val_dataloader=val_dataloader,
+                optimizer=optimizer,
+                loss_fn=(loss_fn_reg, loss_fn_class),
+                epochs=EPOCHS,
+                device=device,
+                model_type=MODEL_TYPE
+            )
+
     optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
 
-    wandb.init(
-        project="House Cost",
-        entity="michall00-warsaw-university-of-technology",
-        config={
-            "epochs": EPOCHS,
-            "hidden_dim": HIDDEN_DIM,
-            "num_layers": NUM_LAYERS,
-            "classification": CLS,
-            "dropout": DROPOUT,
-            "batch_size": BATCH_SIZE,
-            "lr": LR,
-            "weight_decay": WEIGHT_DECAY,
-        },
-    )
+    train_fn()
 
-    train(
-        model=model,
-        train_dataloader=train_dataloader,
-        val_dataloader=val_dataloader,
-        optimizer=optimizer,
-        loss_fn=loss_fn,
-        device=device,
-        epochs=EPOCHS,
-        log_confusion_matrix=CONFUSION_MATRIX,
-    )
-
-
-if __name__ == "__main__":
-    main()
+    wandb.finish()

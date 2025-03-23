@@ -6,6 +6,15 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
+def encode_value(x):
+    if x <= 100000:
+        return 0
+    elif 100000 < x <= 350000:
+        return 1
+    else:
+        return 2
+
+
 def train(
     model: torch.nn.Module,
     train_dataloader: torch.utils.data.DataLoader,
@@ -15,6 +24,7 @@ def train(
     epochs: int,
     log_confusion_matrix: bool = False,
     device: str = "cuda",
+    model_type="classifier",
 ) -> dict[str, list[float]]:
 
     for epoch in tqdm(range(epochs)):
@@ -24,9 +34,11 @@ def train(
             optimizer=optimizer,
             loss_fn=loss_fn,
             device=device,
+            model_type=model_type
         )
         val_loss, val_accuracy, val_f1, all_targets, all_predictions  = test_step(
-            model=model, val_dataloader=val_dataloader, loss_fn=loss_fn, device=device
+            model=model, val_dataloader=val_dataloader, loss_fn=loss_fn, device=device,
+            model_type=model_type
         )
         wandb.log(
             {
@@ -60,6 +72,7 @@ def train_step(
     optimizer: torch.optim.Optimizer,
     loss_fn: torch.nn.Module,
     device="cuda",
+    model_type="classifier",  # Możliwe wartości: "classifier", "regressor", "hybrid"
 ) -> tuple[float, float, float]:
     model.train()
     total_loss = 0
@@ -68,24 +81,49 @@ def train_step(
     all_targets = []
     all_predictions = []
 
-    for batch, (inputs, targets) in enumerate(train_dataloader):
-        inputs, targets = inputs.to(device), targets.to(device)
+    for inputs, targets_reg, targets_class in train_dataloader:
+        inputs = inputs.to(device)
+
+        if model_type == "classifier":
+            targets = targets_class.to(device)
+        elif model_type == "regressor":
+            targets = targets_reg.to(device).float()
+
         optimizer.zero_grad()
-        outputs = model(inputs)
-        loss = loss_fn(outputs, targets)
+
+        if model_type == "hybrid":
+            outputs_reg, outputs_class = model(inputs)
+            regression_loss = loss_fn[0](outputs_reg.squeeze(), targets_reg.to(device))
+            classification_loss = loss_fn[1](outputs_class, targets_class.to(device))
+            loss = regression_loss + classification_loss
+        else:
+            outputs = model(inputs)
+            loss = loss_fn(outputs.squeeze(), targets)
+
         loss.backward()
         optimizer.step()
 
         total_loss += loss.item()
-        _, predicted = torch.max(outputs, 1)
-        correct += (predicted == targets).sum().item()
-        total += targets.size(0)
 
-        all_targets.extend(targets.cpu().numpy())
-        all_predictions.extend(predicted.cpu().numpy())
+        if model_type == "classifier" or model_type == "hybrid":
+            _, predicted = torch.max(outputs_class if model_type == "hybrid" else outputs, 1)
+            correct += (predicted == targets_class.to(device)).sum().item()
+            total += targets_class.size(0)
+            all_targets.extend(targets_class.cpu().numpy())
+            all_predictions.extend(predicted.cpu().numpy())
 
-    accuracy = correct / total
-    f1 = f1_score(all_targets, all_predictions, average="weighted")
+        elif model_type == "regressor":
+            predicted_classes = [encode_value(x) for x in outputs.cpu().detach().numpy()]
+            true_classes = [encode_value(x) for x in targets_reg.cpu().numpy()]
+
+            all_targets.extend(true_classes)
+            all_predictions.extend(predicted_classes)
+
+            correct += sum(p == t for p, t in zip(predicted_classes, true_classes))
+            total += len(true_classes)
+
+    accuracy = correct / total if total > 0 else 0
+    f1 = f1_score(all_targets, all_predictions, average="weighted") if total > 0 else 0
     total_loss /= len(train_dataloader)
 
     return total_loss, accuracy, f1
@@ -96,6 +134,7 @@ def test_step(
     val_dataloader: torch.utils.data.DataLoader,
     loss_fn: torch.nn.Module,
     device="cuda",
+    model_type="classifier",  # Możliwe wartości: "classifier", "regressor", "hybrid"
 ) -> tuple[float, float, float]:
     model.eval()
     total_loss = 0
@@ -105,21 +144,44 @@ def test_step(
     all_predictions = []
 
     with torch.inference_mode():
-        for batch, (inputs, targets) in enumerate(val_dataloader):
-            inputs, targets = inputs.to(device), targets.to(device)
-            outputs = model(inputs)
-            loss = loss_fn(outputs, targets)
+        for inputs, targets_reg, targets_class in val_dataloader:
+            inputs = inputs.to(device)
+
+            if model_type == "classifier":
+                targets = targets_class.to(device)
+            elif model_type == "regressor":
+                targets = targets_reg.to(device)
+
+            if model_type == "hybrid":
+                outputs_reg, outputs_class = model(inputs)
+                regression_loss = loss_fn[0](outputs_reg.squeeze(), targets_reg.to(device))
+                classification_loss = loss_fn[1](outputs_class, targets_class.to(device))
+                loss = regression_loss / 3 + classification_loss
+            else:
+                outputs = model(inputs)
+                loss = loss_fn(outputs.squeeze(), targets)
+
             total_loss += loss.item()
 
-            _, predicted = torch.max(outputs, 1)
-            correct += (predicted == targets).sum().item()
-            total += targets.size(0)
+            if model_type == "classifier" or model_type == "hybrid":
+                _, predicted = torch.max(outputs_class if model_type == "hybrid" else outputs, 1)
+                correct += (predicted == targets_class.to(device)).sum().item()
+                total += targets_class.size(0)
+                all_targets.extend(targets_class.cpu().numpy())
+                all_predictions.extend(predicted.cpu().numpy())
 
-            all_targets.extend(targets.cpu().numpy())
-            all_predictions.extend(predicted.cpu().numpy())
+            elif model_type == "regressor":
+                predicted_classes = [encode_value(x) for x in outputs.cpu().numpy()]
+                true_classes = [encode_value(x) for x in targets_reg.cpu().numpy()]
 
-    accuracy = correct / total
-    f1 = f1_score(all_targets, all_predictions, average="weighted")
+                all_targets.extend(true_classes)
+                all_predictions.extend(predicted_classes)
+
+                correct += sum(p == t for p, t in zip(predicted_classes, true_classes))
+                total += len(true_classes)
+
+    accuracy = correct / total if total > 0 else 0
+    f1 = f1_score(all_targets, all_predictions, average="weighted") if total > 0 else 0
     total_loss /= len(val_dataloader)
 
     return total_loss, accuracy, f1, all_targets, all_predictions
