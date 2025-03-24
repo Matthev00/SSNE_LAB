@@ -20,7 +20,9 @@ class HouseNet(nn.Module):
             self.hidden_layers = nn.ModuleList(
                 [
                     nn.Sequential(
-                        nn.Linear(int(hidden_dim / 2**i), int(hidden_dim / 2 ** (i + 1))),
+                        nn.Linear(
+                            int(hidden_dim / 2**i), int(hidden_dim / 2 ** (i + 1))
+                        ),
                         nn.BatchNorm1d(int(hidden_dim / 2 ** (i + 1))),
                         nn.LeakyReLU(),
                         nn.Dropout(dropout),
@@ -32,7 +34,9 @@ class HouseNet(nn.Module):
             self.hidden_layers = nn.ModuleList(
                 [
                     nn.Sequential(
-                        nn.Linear(int(hidden_dim / 2**i), int(hidden_dim / 2 ** (i + 1))),
+                        nn.Linear(
+                            int(hidden_dim / 2**i), int(hidden_dim / 2 ** (i + 1))
+                        ),
                         nn.LeakyReLU(),
                         nn.Dropout(dropout),
                     )
@@ -50,14 +54,23 @@ class HouseNet(nn.Module):
 
 
 class HybridNet(nn.Module):
-    def __init__(self, input_size: int, hidden_dim: int, num_layers: int, dropout: float = 0.5, batch_norm: bool = True,):
+    def __init__(
+        self,
+        input_size: int,
+        hidden_dim: int,
+        num_layers: int,
+        dropout: float = 0.5,
+        batch_norm: bool = True,
+    ):
         super(HybridNet, self).__init__()
         self.input_layer = nn.Linear(input_size, hidden_dim)
         if batch_norm:
             self.hidden_layers = nn.ModuleList(
                 [
                     nn.Sequential(
-                        nn.Linear(int(hidden_dim / 2**i), int(hidden_dim / 2 ** (i + 1))),
+                        nn.Linear(
+                            int(hidden_dim / 2**i), int(hidden_dim / 2 ** (i + 1))
+                        ),
                         nn.BatchNorm1d(int(hidden_dim / 2 ** (i + 1))),
                         nn.LeakyReLU(),
                         nn.Dropout(dropout),
@@ -69,7 +82,9 @@ class HybridNet(nn.Module):
             self.hidden_layers = nn.ModuleList(
                 [
                     nn.Sequential(
-                        nn.Linear(int(hidden_dim / 2**i), int(hidden_dim / 2 ** (i + 1))),
+                        nn.Linear(
+                            int(hidden_dim / 2**i), int(hidden_dim / 2 ** (i + 1))
+                        ),
                         nn.LeakyReLU(),
                         nn.Dropout(dropout),
                     )

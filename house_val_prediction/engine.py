@@ -1,9 +1,10 @@
-import torch
-import wandb
-from sklearn.metrics import f1_score, confusion_matrix
-from tqdm import tqdm
 import matplotlib.pyplot as plt
 import seaborn as sns
+import torch
+from sklearn.metrics import confusion_matrix, f1_score
+from tqdm import tqdm
+
+import wandb
 
 
 def encode_value(x):
@@ -34,11 +35,14 @@ def train(
             optimizer=optimizer,
             loss_fn=loss_fn,
             device=device,
-            model_type=model_type
+            model_type=model_type,
         )
-        val_loss, val_accuracy, val_f1, all_targets, all_predictions  = test_step(
-            model=model, val_dataloader=val_dataloader, loss_fn=loss_fn, device=device,
-            model_type=model_type
+        val_loss, val_accuracy, val_f1, all_targets, all_predictions = test_step(
+            model=model,
+            val_dataloader=val_dataloader,
+            loss_fn=loss_fn,
+            device=device,
+            model_type=model_type,
         )
         wandb.log(
             {
@@ -72,7 +76,7 @@ def train_step(
     optimizer: torch.optim.Optimizer,
     loss_fn: torch.nn.Module,
     device="cuda",
-    model_type="classifier",  # Możliwe wartości: "classifier", "regressor", "hybrid"
+    model_type="classifier",
 ) -> tuple[float, float, float]:
     model.train()
     total_loss = 0
@@ -95,7 +99,7 @@ def train_step(
             outputs_reg, outputs_class = model(inputs)
             regression_loss = loss_fn[0](outputs_reg.squeeze(), targets_reg.to(device))
             classification_loss = loss_fn[1](outputs_class, targets_class.to(device))
-            loss = regression_loss + classification_loss
+            loss = regression_loss / 3 + classification_loss
         else:
             outputs = model(inputs)
             loss = loss_fn(outputs.squeeze(), targets)
@@ -106,14 +110,19 @@ def train_step(
         total_loss += loss.item()
 
         if model_type == "classifier" or model_type == "hybrid":
-            _, predicted = torch.max(outputs_class if model_type == "hybrid" else outputs, 1)
+            predicted = torch.argmax(
+                torch.softmax(outputs_class if model_type == "hybrid" else outputs, 1),
+                1,
+            )
             correct += (predicted == targets_class.to(device)).sum().item()
             total += targets_class.size(0)
             all_targets.extend(targets_class.cpu().numpy())
             all_predictions.extend(predicted.cpu().numpy())
 
         elif model_type == "regressor":
-            predicted_classes = [encode_value(x) for x in outputs.cpu().detach().numpy()]
+            predicted_classes = [
+                encode_value(x) for x in outputs.cpu().detach().numpy()
+            ]
             true_classes = [encode_value(x) for x in targets_reg.cpu().numpy()]
 
             all_targets.extend(true_classes)
@@ -134,7 +143,7 @@ def test_step(
     val_dataloader: torch.utils.data.DataLoader,
     loss_fn: torch.nn.Module,
     device="cuda",
-    model_type="classifier",  # Możliwe wartości: "classifier", "regressor", "hybrid"
+    model_type="classifier",
 ) -> tuple[float, float, float]:
     model.eval()
     total_loss = 0
@@ -154,8 +163,12 @@ def test_step(
 
             if model_type == "hybrid":
                 outputs_reg, outputs_class = model(inputs)
-                regression_loss = loss_fn[0](outputs_reg.squeeze(), targets_reg.to(device))
-                classification_loss = loss_fn[1](outputs_class, targets_class.to(device))
+                regression_loss = loss_fn[0](
+                    outputs_reg.squeeze(), targets_reg.to(device)
+                )
+                classification_loss = loss_fn[1](
+                    outputs_class, targets_class.to(device)
+                )
                 loss = regression_loss / 3 + classification_loss
             else:
                 outputs = model(inputs)
@@ -164,7 +177,12 @@ def test_step(
             total_loss += loss.item()
 
             if model_type == "classifier" or model_type == "hybrid":
-                _, predicted = torch.max(outputs_class if model_type == "hybrid" else outputs, 1)
+                predicted = torch.argmax(
+                    torch.softmax(
+                        outputs_class if model_type == "hybrid" else outputs, 1
+                    ),
+                    1,
+                )
                 correct += (predicted == targets_class.to(device)).sum().item()
                 total += targets_class.size(0)
                 all_targets.extend(targets_class.cpu().numpy())

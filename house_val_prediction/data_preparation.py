@@ -38,15 +38,18 @@ def encode_categorical_features(df: pd.DataFrame) -> pd.DataFrame:
     df["TotalParking"] = df["N_Parkinglot(Ground)"] + df["N_Parkinglot(Basement)"]
     df["ParkingRatio"] = df["TotalParking"] / df["Size(sqf)"]
 
-
     df = df.astype({col: "int" for col in df.select_dtypes("bool").columns})
 
     return df
 
 
-def scale_features(X_train: pd.DataFrame, X_val: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+def scale_features(
+    X_train: pd.DataFrame, X_val: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     scaler = StandardScaler()
-    X_train_scaled = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
+    X_train_scaled = pd.DataFrame(
+        scaler.fit_transform(X_train), columns=X_train.columns
+    )
     X_val_scaled = pd.DataFrame(scaler.transform(X_val), columns=X_val.columns)
     return X_train_scaled, X_val_scaled
 
@@ -76,7 +79,9 @@ def compute_class_weights(y: pd.Series) -> dict:
 
 
 class HouseDataset(Dataset):
-    def __init__(self, X: pd.DataFrame, y_reg: pd.Series = None, y_class: pd.Series = None):
+    def __init__(
+        self, X: pd.DataFrame, y_reg: pd.Series = None, y_class: pd.Series = None
+    ):
         """
         Dataset obsługujący zarówno regresję, jak i klasyfikację.
         """
@@ -107,8 +112,8 @@ def create_data_loaders(
     y_reg = df["SalePrice"]
     y_class = df["ClassTarget"]
 
-    X_train, X_val, y_reg_train, y_reg_val, y_class_train, y_class_val = train_test_split(
-        X, y_reg, y_class, test_size=val_size, random_state=42
+    X_train, X_val, y_reg_train, y_reg_val, y_class_train, y_class_val = (
+        train_test_split(X, y_reg, y_class, test_size=val_size, random_state=42)
     )
 
     class_weights = compute_class_weights(y_class)

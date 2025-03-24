@@ -1,6 +1,6 @@
 import torch
-import wandb
 
+import wandb
 from data_preparation import create_data_loaders
 from engine import train
 from model import HouseNet, HybridNet
@@ -12,8 +12,8 @@ def main():
     wandb.init()
     config = wandb.config
 
-    MODEL_TYPE = config.MODEL_TYPE  # Możliwe wartości: "classifier", "regressor", "hybrid"
-    BATCH_NORM = config.BATCH_NORM  
+    MODEL_TYPE = config.MODEL_TYPE
+    BATCH_NORM = config.BATCH_NORM
 
     EPOCHS = config.epochs
     HIDDEN_DIM = config.HIDDEN_DIM
@@ -56,7 +56,7 @@ def main():
                 loss_fn=loss_fn,
                 epochs=EPOCHS,
                 device=device,
-                model_type=MODEL_TYPE
+                model_type=MODEL_TYPE,
             )
 
     elif MODEL_TYPE == "regressor":
@@ -80,7 +80,7 @@ def main():
                 loss_fn=loss_fn,
                 epochs=EPOCHS,
                 device=device,
-                model_type=MODEL_TYPE
+                model_type=MODEL_TYPE,
             )
 
     elif MODEL_TYPE == "hybrid":
@@ -103,7 +103,7 @@ def main():
                 loss_fn=(loss_fn_reg, loss_fn_class),
                 epochs=EPOCHS,
                 device=device,
-                model_type=MODEL_TYPE
+                model_type=MODEL_TYPE,
             )
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
