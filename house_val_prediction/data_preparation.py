@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pandas as pd
+from pickle import dump
 import torch
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -44,14 +45,22 @@ def encode_categorical_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def scale_features(
-    X_train: pd.DataFrame, X_val: pd.DataFrame
+    X_train: pd.DataFrame, 
+    X_val: pd.DataFrame,
+    Y_train: pd.Series,
+    Y_val: pd.Series
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     scaler = StandardScaler()
     X_train_scaled = pd.DataFrame(
         scaler.fit_transform(X_train), columns=X_train.columns
     )
     X_val_scaled = pd.DataFrame(scaler.transform(X_val), columns=X_val.columns)
-    return X_train_scaled, X_val_scaled
+    dump(scaler, open("X_scaler.pkl", "wb"))
+    scaler = StandardScaler()
+    y_train_scaled = pd.DataFrame(scaler.fit_transform(Y_train.values.reshape(-1, 1)), columns=["SalePrice"])
+    y_val_scaled = pd.DataFrame(scaler.transform(Y_val.values.reshape(-1, 1)), columns=["SalePrice"])
+    dump(scaler, open("y_scaler.pkl", "wb"))
+    return X_train_scaled, X_val_scaled, y_train_scaled, y_val_scaled
 
 
 def prepare_data(data_path: Path) -> pd.DataFrame:
@@ -117,7 +126,7 @@ def create_data_loaders(
     )
 
     class_weights = compute_class_weights(y_class)
-    X_train, X_val = scale_features(X_train, X_val)
+    X_train, X_val, y_reg_train, y_reg_val = scale_features(X_train, X_val, y_reg_train, y_reg_val)
 
     train_dataset = HouseDataset(X_train, y_reg_train, y_class_train)
     val_dataset = HouseDataset(X_val, y_reg_val, y_class_val)
