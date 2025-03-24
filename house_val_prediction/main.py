@@ -6,6 +6,7 @@ from engine import train
 from model import HouseNet, HybridNet
 
 
+
 def main():
     torch.manual_seed(42)
 
@@ -22,6 +23,7 @@ def main():
     BATCH_SIZE = config.BATCH_SIZE
     LR = config.LR
     WEIGHT_DECAY = config.WEIGHT_DECAY
+    LOSS_WEIGHTS = (config.LOSS_WEIGHT_REG, 1-config.LOSS_WEIGHT_REG)
 
     DATA_PATH = "train_data.csv"
     INPUT_SIZE = 27
@@ -53,6 +55,7 @@ def main():
                 train_dataloader=train_dataloader,
                 val_dataloader=val_dataloader,
                 optimizer=optimizer,
+                scheduler=scheduler,
                 loss_fn=loss_fn,
                 epochs=EPOCHS,
                 device=device,
@@ -77,10 +80,12 @@ def main():
                 train_dataloader=train_dataloader,
                 val_dataloader=val_dataloader,
                 optimizer=optimizer,
+                scheduler=scheduler,
                 loss_fn=loss_fn,
                 epochs=EPOCHS,
                 device=device,
                 model_type=MODEL_TYPE,
+                loss_weights=LOSS_WEIGHTS,
             )
 
     elif MODEL_TYPE == "hybrid":
@@ -100,6 +105,7 @@ def main():
                 train_dataloader=train_dataloader,
                 val_dataloader=val_dataloader,
                 optimizer=optimizer,
+                scheduler=scheduler,
                 loss_fn=(loss_fn_reg, loss_fn_class),
                 epochs=EPOCHS,
                 device=device,
@@ -107,6 +113,7 @@ def main():
             )
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", factor=0.1, patience=5)
 
     train_fn()
 

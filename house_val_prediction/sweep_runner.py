@@ -2,13 +2,13 @@ import wandb
 from main import main
 
 sweep_config = {
-    "method": "grid",
+    "method": "bayes",
     "metric": {
-        "name": "Validation F1",
+        "name": "Validation Balanced Accuracy",
         "goal": "maximize",
     },
     "parameters": {
-        "MODEL_TYPE": {"values": ["classifier", "regressor", "hybrid"]},
+        "MODEL_TYPE": {"values": ["hybrid"]},
         "BATCH_NORM": {"values": [True, False]},
         "HIDDEN_DIM": {"values": [32, 64, 128, 256, 512]},
         "NUM_LAYERS": {"values": [1, 2, 3, 4]},
@@ -17,7 +17,8 @@ sweep_config = {
         "WEIGHT_DECAY": {"values": [0.0, 1e-2, 1e-3]},
         "BATCH_SIZE": {"values": [32, 64]},
         "epochs": {"values": [10, 20]},
-    },
+        'LOSS_WEIGHT_REG': {"values": [num / 10 for num in range(0, 11)]},
+    }
 }
 
 
