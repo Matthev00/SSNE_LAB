@@ -8,6 +8,9 @@ BEST_CONFIG = {
     "EPOCHS": 10,
     "BATCH_NORM": True,
     "INPUT_SIZE": 27,
-    "DATA_PATH": "train_data.csv",
-    "TEST_DATA_PATH": "test_data.csv",
+    "DATA_PATH": "house_val_prediction/train_data.csv",
+    "TEST_DATA_PATH": "house_val_prediction/test_data.csv",
+    "SCHEDULER_FACTOR": 0.1,
+    "SCHEDULER_PATIENCE": 3,
+    "LOSS_WEIGHT_REG": 0.5
 }

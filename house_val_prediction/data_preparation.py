@@ -146,6 +146,7 @@ def create_test_dataloader(
 ) -> DataLoader:
 
     test_data = load_data(test_data_path)
+    test_data = encode_categorical_features(test_data)
 
     scaler = load(open("X_scaler.pkl", "rb"))
     test_data_scaled = pd.DataFrame(

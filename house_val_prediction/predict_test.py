@@ -5,10 +5,13 @@ from config import BEST_CONFIG
 from data_preparation import create_data_loaders, create_test_dataloader
 from model import HybridNet
 from engine import train
+import wandb
 
 
 def main():
     config = BEST_CONFIG
+    loss_weights = (config["LOSS_WEIGHT_REG"], 1 - config["LOSS_WEIGHT_REG"])
+
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     torch.manual_seed(42)
@@ -33,17 +36,23 @@ def main():
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=config["LR"], weight_decay=config["WEIGHT_DECAY"]
     )
-
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="max", factor=0.1, patience=5
+    )
+    wandb.init()
     train(
         model=model,
         train_dataloader=train_dataloader,
         val_dataloader=val_dataloader,
         optimizer=optimizer,
-        loss_fn_reg=loss_fn_reg,
-        loss_fn_class=loss_fn_class,
+        scheduler=scheduler,
+        loss_fn=(loss_fn_reg, loss_fn_class),
         epochs=config["EPOCHS"],
         device=device,
+        model_type="hybrid",
+        loss_weights=loss_weights,
     )
+
 
     test_dataloader = create_test_dataloader(
         test_data_path=Path(config["TEST_DATA_PATH"]),
