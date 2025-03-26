@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pandas as pd
-from pickle import dump
+from pickle import dump, load
 import torch
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -45,10 +45,7 @@ def encode_categorical_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def scale_features(
-    X_train: pd.DataFrame, 
-    X_val: pd.DataFrame,
-    Y_train: pd.Series,
-    Y_val: pd.Series
+    X_train: pd.DataFrame, X_val: pd.DataFrame, Y_train: pd.Series, Y_val: pd.Series
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     scaler = StandardScaler()
     X_train_scaled = pd.DataFrame(
@@ -57,8 +54,12 @@ def scale_features(
     X_val_scaled = pd.DataFrame(scaler.transform(X_val), columns=X_val.columns)
     dump(scaler, open("X_scaler.pkl", "wb"))
     scaler = StandardScaler()
-    y_train_scaled = pd.DataFrame(scaler.fit_transform(Y_train.values.reshape(-1, 1)), columns=["SalePrice"])
-    y_val_scaled = pd.DataFrame(scaler.transform(Y_val.values.reshape(-1, 1)), columns=["SalePrice"])
+    y_train_scaled = pd.DataFrame(
+        scaler.fit_transform(Y_train.values.reshape(-1, 1)), columns=["SalePrice"]
+    )
+    y_val_scaled = pd.DataFrame(
+        scaler.transform(Y_val.values.reshape(-1, 1)), columns=["SalePrice"]
+    )
     dump(scaler, open("y_scaler.pkl", "wb"))
     return X_train_scaled, X_val_scaled, y_train_scaled, y_val_scaled
 
@@ -126,7 +127,9 @@ def create_data_loaders(
     )
 
     class_weights = compute_class_weights(y_class)
-    X_train, X_val, y_reg_train, y_reg_val = scale_features(X_train, X_val, y_reg_train, y_reg_val)
+    X_train, X_val, y_reg_train, y_reg_val = scale_features(
+        X_train, X_val, y_reg_train, y_reg_val
+    )
 
     train_dataset = HouseDataset(X_train, y_reg_train, y_class_train)
     val_dataset = HouseDataset(X_val, y_reg_val, y_class_val)
@@ -135,3 +138,21 @@ def create_data_loaders(
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     return train_loader, val_loader, class_weights
+
+
+def create_test_dataloader(
+    test_data_path: Path,
+    batch_size: int = 32,
+) -> DataLoader:
+
+    test_data = load_data(test_data_path)
+
+    scaler = load(open("X_scaler.pkl", "rb"))
+    test_data_scaled = pd.DataFrame(
+        scaler.transform(test_data), columns=test_data.columns
+    )
+
+    test_dataset = HouseDataset(test_data_scaled)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+    return test_loader

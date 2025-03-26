@@ -41,15 +41,22 @@ def train(
             loss_fn=loss_fn,
             device=device,
             model_type=model_type,
-            loss_weights=loss_weights
+            loss_weights=loss_weights,
         )
-        val_loss, val_accuracy, val_f1, all_targets, all_predictions, val_balanced_accuracy = test_step(
+        (
+            val_loss,
+            val_accuracy,
+            val_f1,
+            all_targets,
+            all_predictions,
+            val_balanced_accuracy,
+        ) = test_step(
             model=model,
             val_dataloader=val_dataloader,
             loss_fn=loss_fn,
             device=device,
             model_type=model_type,
-            loss_weights=loss_weights
+            loss_weights=loss_weights,
         )
         wandb.log(
             {
@@ -110,7 +117,10 @@ def train_step(
             outputs_reg, outputs_class = model(inputs)
             regression_loss = loss_fn[0](outputs_reg.squeeze(), targets_reg.to(device))
             classification_loss = loss_fn[1](outputs_class, targets_class.to(device))
-            loss = regression_loss * loss_weights[0] + classification_loss * loss_weights[1]
+            loss = (
+                regression_loss * loss_weights[0]
+                + classification_loss * loss_weights[1]
+            )
         else:
             outputs = model(inputs)
             loss = loss_fn(outputs.squeeze(), targets)
@@ -122,8 +132,7 @@ def train_step(
 
         if model_type == "classifier" or model_type == "hybrid":
             predicted = torch.argmax(
-                torch.softmax(outputs_class if model_type == "hybrid" else outputs, 1),
-                1,
+                outputs_class if model_type == "hybrid" else outputs, 1
             )
             correct += (predicted == targets_class.to(device)).sum().item()
             total += targets_class.size(0)
@@ -144,7 +153,9 @@ def train_step(
 
     accuracy = correct / total if total > 0 else 0
     f1 = f1_score(all_targets, all_predictions, average="weighted") if total > 0 else 0
-    balanced_accuracy = balanced_accuracy_score(all_targets, all_predictions) if total > 0 else 0
+    balanced_accuracy = (
+        balanced_accuracy_score(all_targets, all_predictions) if total > 0 else 0
+    )
     total_loss /= len(train_dataloader)
 
     return total_loss, accuracy, f1, balanced_accuracy
@@ -182,7 +193,10 @@ def test_step(
                 classification_loss = loss_fn[1](
                     outputs_class, targets_class.to(device)
                 )
-                loss = regression_loss * loss_weights[0] + classification_loss * loss_weights[1]
+                loss = (
+                    regression_loss * loss_weights[0]
+                    + classification_loss * loss_weights[1]
+                )
             else:
                 outputs = model(inputs)
                 loss = loss_fn(outputs.squeeze(), targets)
@@ -191,10 +205,7 @@ def test_step(
 
             if model_type == "classifier" or model_type == "hybrid":
                 predicted = torch.argmax(
-                    torch.softmax(
-                        outputs_class if model_type == "hybrid" else outputs, 1
-                    ),
-                    1,
+                    outputs_class if model_type == "hybrid" else outputs, 1
                 )
                 correct += (predicted == targets_class.to(device)).sum().item()
                 total += targets_class.size(0)
@@ -213,7 +224,9 @@ def test_step(
 
     accuracy = correct / total if total > 0 else 0
     f1 = f1_score(all_targets, all_predictions, average="weighted") if total > 0 else 0
-    balanced_accuracy = balanced_accuracy_score(all_targets, all_predictions) if total > 0 else 0
+    balanced_accuracy = (
+        balanced_accuracy_score(all_targets, all_predictions) if total > 0 else 0
+    )
     total_loss /= len(val_dataloader)
 
     return total_loss, accuracy, f1, all_targets, all_predictions, balanced_accuracy

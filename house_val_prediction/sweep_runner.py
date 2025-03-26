@@ -17,8 +17,8 @@ sweep_config = {
         "WEIGHT_DECAY": {"values": [0.0, 1e-2, 1e-3]},
         "BATCH_SIZE": {"values": [32, 64]},
         "epochs": {"values": [10, 20]},
-        'LOSS_WEIGHT_REG': {"values": [num / 10 for num in range(0, 11)]},
-    }
+        "LOSS_WEIGHT_REG": {"values": [num / 10 for num in range(0, 11)]},
+    },
 }
 
 
