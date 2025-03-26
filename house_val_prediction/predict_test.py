@@ -68,7 +68,7 @@ def main():
             predicted_classes = torch.argmax(outputs_class, dim=1).cpu().numpy()
             predictions.extend(predicted_classes)
 
-    output_path = "pred.csv"
+    output_path = "house_val_prediction/pred.csv"
     pd.DataFrame(predictions).to_csv(output_path, index=False, header=False)
 
 
