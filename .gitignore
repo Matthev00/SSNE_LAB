@@ -12,3 +12,4 @@ data
 *.csv
 */wandb
 wandb
+*/data/
