@@ -147,6 +147,7 @@ class TinyResNet(nn.Module):
         input_channels: int = 3,
         hidden_size: int = 32,
         num_classes: int = 50,
+        dropout: float = 0.5,
     ):
         super().__init__()
 
