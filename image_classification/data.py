@@ -93,7 +93,8 @@ def get_data_loaders(
     if train_transform is None:
         train_transform = transforms.Compose(
             [
-                transforms.RandomHorizontalFlip(),
+                transforms.RandomHorizontalFlip(0.5),
+                transforms.RandomRotation(24),
                 transforms.ToTensor(),
                 transforms.Normalize(
                     (0.5204, 0.4950, 0.4381), (0.2113, 0.2103, 0.2100)
