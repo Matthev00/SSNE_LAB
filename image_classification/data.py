@@ -3,8 +3,6 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import torch
-import torchvision
 from torch.utils.data import DataLoader, Dataset, Subset
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
@@ -154,7 +152,7 @@ def plot_class_distribution(subset: Subset):
 
 def main():
     data_dir = Path("image_classification/data/train")
-    train_loader, val_loader = get_data_loaders(data_dir, data_percent=0.5)
+    train_loader, val_loader = get_data_loaders(data_dir, data_percent=1)
     print(f"Train Loader: {len(train_loader.dataset)} samples")
     plot_class_distribution(train_loader.dataset)
     print(f"Validation Loader: {len(val_loader.dataset)} samples")
