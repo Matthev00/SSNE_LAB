@@ -13,3 +13,7 @@ data
 */wandb
 wandb
 */data/
+*.zip
+*.tar
+*.pkl
+.vscode
