@@ -48,25 +48,25 @@ def train(
 
         scheduler.step(val_loss)
 
-        if log_confusion_matrix:
-            cm = confusion_matrix(all_targets, all_preds)
-            plt.figure(figsize=(10, 8))
-            sns.heatmap(
-                cm,
-                annot=True,
-                fmt="d",
-                cmap="Blues",
-                xticklabels=class_names,
-                yticklabels=class_names,
-            )
-            plt.xlabel("Predicted")
-            plt.ylabel("True")
-            plt.title(f"Confusion Matrix (Epoch {epoch+1})")
-            plt.tight_layout()
-            path = f"confusion_matrix_epoch_{epoch+1}.png"
-            plt.savefig(path)
-            plt.close()
-            wandb.log({f"Confusion Matrix (Epoch {epoch+1})": wandb.Image(path)})
+    if log_confusion_matrix:
+        cm = confusion_matrix(all_targets, all_preds)
+        plt.figure(figsize=(20, 16))
+        sns.heatmap(
+            cm,
+            annot=True,
+            fmt="d",
+            cmap="Blues",
+            xticklabels=class_names,
+            yticklabels=class_names,
+        )
+        plt.xlabel("Predicted")
+        plt.ylabel("True")
+        plt.title(f"Confusion Matrix")
+        plt.tight_layout()
+        path = f"confusion_matrix.png"
+        plt.savefig(path)
+        plt.close()
+        wandb.log({f"Confusion Matrix": wandb.Image(path)})
 
     wandb.finish()
 
