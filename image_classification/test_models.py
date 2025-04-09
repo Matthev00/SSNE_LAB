@@ -1,6 +1,7 @@
 from timeit import default_timer as timer
 
 import torch
+
 from models import (
     CNN_BN,
     LeNetPlus,
