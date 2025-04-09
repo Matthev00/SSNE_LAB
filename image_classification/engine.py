@@ -68,8 +68,6 @@ def train(
         plt.close()
         wandb.log({f"Confusion Matrix": wandb.Image(path)})
 
-    wandb.finish()
-
 
 def train_step(
     model: torch.nn.Module,

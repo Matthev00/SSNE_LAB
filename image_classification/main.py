@@ -7,6 +7,8 @@ from pathlib import Path
 from data import get_data_loaders
 from engine import train
 from models import LeNetPlus, TinyVGG, CNN_BN, TinyResNet
+import tempfile
+
 
 
 MODEL_MAP = {
@@ -65,9 +67,23 @@ def run():
         loss_fn=loss_fn,
         epochs=config.epochs,
         class_names=class_names,
-        log_confusion_matrix=False,
+        log_confusion_matrix=True,
         device=device,
     )
+    # Log model
+    with tempfile.NamedTemporaryFile(suffix=".pth") as tmp:
+        torch.save(model.state_dict(), tmp.name)
+        
+        artifact = wandb.Artifact(
+            name=f"{config.hidden_size}_model",
+            type="model",
+            description="Trained model weights",
+            metadata=dict(config)
+        )
+        artifact.add_file(tmp.name)
+        wandb.log_artifact(artifact)
+
+    wandb.finish()
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ from models import (
     CNN_BN,
     TinyResNet,
 )
+from timeit import default_timer as timer
 
 def count_params(model):
     total_params = sum(p.numel() for p in model.parameters())
@@ -12,7 +13,7 @@ def count_params(model):
     return total_params, trainable_params
 
 
-def test_models(input_shape=(32, 3, 64, 64), num_classes=50, hidden_size=32):
+def test_models(input_shape=(64, 3, 64, 64), num_classes=50, hidden_size=256):
     models = {
         "LeNetPlus": LeNetPlus(hidden_size=hidden_size, num_classes=num_classes),
         "TinyVGG": TinyVGG(hidden_size=hidden_size, num_classes=num_classes),
@@ -26,7 +27,10 @@ def test_models(input_shape=(32, 3, 64, 64), num_classes=50, hidden_size=32):
         print(f"🔢 Total params: {total:,}")
         print(f"🟢 Trainable params: {trainable:,}")
         x = torch.randn(*input_shape)
+        start = timer()
         y = model(x)
+        end = timer()
+        print(f"⏱️ Inference time: {end - start:.4f} seconds")
         print(f"✅ Output shape: {y.shape}")
 
 
