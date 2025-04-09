@@ -1,5 +1,6 @@
-import wandb
 from main import run
+
+import wandb
 
 sweep_config = {
     "method": "bayes",
@@ -21,5 +22,7 @@ sweep_config = {
     },
 }
 
-sweep_id = wandb.sweep(sweep_config, project="image-classification", entity="MY_EXPERIMENTS")
+sweep_id = wandb.sweep(
+    sweep_config, project="image-classification", entity="MY_EXPERIMENTS"
+)
 wandb.agent(sweep_id, function=run)

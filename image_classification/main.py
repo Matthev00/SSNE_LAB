@@ -1,15 +1,14 @@
-import wandb
+import tempfile
+from pathlib import Path
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from pathlib import Path
-
-from data import get_data_loaders
 from engine import train
-from models import LeNetPlus, TinyVGG, CNN_BN, TinyResNet
-import tempfile
+from models import CNN_BN, LeNetPlus, TinyResNet, TinyVGG
 
-
+import wandb
+from data import get_data_loaders
 
 MODEL_MAP = {
     "LeNetPlus": LeNetPlus,
@@ -18,6 +17,7 @@ MODEL_MAP = {
     "TinyResNet": TinyResNet,
 }
 
+
 def set_seed(seed: int = 42):
     """Set the seed for reproducibility."""
     torch.manual_seed(seed)
@@ -25,6 +25,7 @@ def set_seed(seed: int = 42):
         torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+
 
 def run():
     set_seed()
@@ -45,14 +46,22 @@ def run():
 
     # MODEL
     model_class = MODEL_MAP[config.model_name]
-    model = model_class(hidden_size=config.hidden_size, dropout=config.dropout, num_classes=len(class_names))
+    model = model_class(
+        hidden_size=config.hidden_size,
+        dropout=config.dropout,
+        num_classes=len(class_names),
+    )
     model = model.to(device)
 
     # OPTIMIZER
-    optimizer = optim.AdamW(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
+    optimizer = optim.AdamW(
+        model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay
+    )
 
     # LR SCHEDULER
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=config.patience, factor=config.scheduler_factor)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="min", patience=config.patience, factor=config.scheduler_factor
+    )
 
     # LOSS
     loss_fn = nn.CrossEntropyLoss()
@@ -73,12 +82,12 @@ def run():
     # Log model
     with tempfile.NamedTemporaryFile(suffix=".pth") as tmp:
         torch.save(model.state_dict(), tmp.name)
-        
+
         artifact = wandb.Artifact(
             name=f"{config.hidden_size}_model",
             type="model",
             description="Trained model weights",
-            metadata=dict(config)
+            metadata=dict(config),
         )
         artifact.add_file(tmp.name)
         wandb.log_artifact(artifact)

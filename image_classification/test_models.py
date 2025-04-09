@@ -1,11 +1,13 @@
+from timeit import default_timer as timer
+
 import torch
 from models import (
-    LeNetPlus,
-    TinyVGG,
     CNN_BN,
+    LeNetPlus,
     TinyResNet,
+    TinyVGG,
 )
-from timeit import default_timer as timer
+
 
 def count_params(model):
     total_params = sum(p.numel() for p in model.parameters())
