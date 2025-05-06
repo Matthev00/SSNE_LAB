@@ -33,7 +33,8 @@ def train_epoch(
 
         # === Discriminator ===
         discriminator_optimizer.zero_grad()
-        real_target = torch.ones(b_size, device=device)
+
+        real_target = torch.full((b_size,), 0.9, device=device)
         fake_target = torch.zeros(b_size, device=device)
 
         real_output = discriminator(real_images, real_labels).view(-1)
@@ -41,8 +42,9 @@ def train_epoch(
 
         noise = torch.randn(b_size, latent_dim, device=device)
         fake_labels = torch.randint(0, num_classes, (b_size,), device=device)
-        fake_images = generator(noise, fake_labels)
-        fake_output = discriminator(fake_images.detach(), fake_labels).view(-1)
+        with torch.no_grad():
+            fake_images = generator(noise, fake_labels)
+        fake_output = discriminator(fake_images, fake_labels).view(-1)
         loss_fake = criterion(fake_output, fake_target)
 
         d_loss = loss_real + loss_fake
@@ -51,6 +53,10 @@ def train_epoch(
 
         # === Generator ===
         generator_optimizer.zero_grad()
+
+        noise = torch.randn(b_size, latent_dim, device=device)
+        fake_labels = torch.randint(0, num_classes, (b_size,), device=device)
+        fake_images = generator(noise, fake_labels)
         gen_target = torch.ones(b_size, device=device)
         output = discriminator(fake_images, fake_labels).view(-1)
         g_loss = criterion(output, gen_target)
