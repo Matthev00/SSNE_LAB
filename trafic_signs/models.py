@@ -59,7 +59,6 @@ class Discriminator(nn.Module):
             nn.BatchNorm2d(ndf * 4),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(ndf * 4, 1, 4, 1, 0, bias=False),
-            nn.Sigmoid(),
         )
 
     def forward(self, img: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
