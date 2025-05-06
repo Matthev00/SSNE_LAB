@@ -10,16 +10,13 @@ from data_utils import denormalize
 
 
 def train_epoch(
-    generator: nn.Module,
-    discriminator: nn.Module,
-    train_loader: DataLoader,
-    generator_optimizer: torch.optim.Optimizer,
-    discriminator_optimizer: torch.optim.Optimizer,
-    criterion: Callable,
-    latent_dim: int,
-    num_classes: int,
-    device: torch.device,
+    generator, discriminator, train_loader,
+    generator_optimizer, discriminator_optimizer,
+    criterion, latent_dim, num_classes, device
 ) -> tuple[float, float]:
+    
+    class_loss_fn = nn.CrossEntropyLoss()
+
     generator.train()
     discriminator.train()
 
@@ -37,17 +34,18 @@ def train_epoch(
         real_target = torch.full((b_size,), 0.9, device=device)
         fake_target = torch.zeros(b_size, device=device)
 
-        real_output = discriminator(real_images, real_labels).view(-1)
-        loss_real = criterion(real_output, real_target)
+        real_output, real_class_logits = discriminator(real_images, real_labels)
+        d_real_loss = criterion(real_output, real_target)
+        d_class_loss = class_loss_fn(real_class_logits, real_labels)
 
         noise = torch.randn(b_size, latent_dim, device=device)
         fake_labels = torch.randint(0, num_classes, (b_size,), device=device)
         with torch.no_grad():
             fake_images = generator(noise, fake_labels)
-        fake_output = discriminator(fake_images, fake_labels).view(-1)
-        loss_fake = criterion(fake_output, fake_target)
+        fake_output, _ = discriminator(fake_images, fake_labels)
+        d_fake_loss = criterion(fake_output, fake_target)
 
-        d_loss = loss_real + loss_fake
+        d_loss = d_real_loss + d_fake_loss + d_class_loss
         d_loss.backward()
         discriminator_optimizer.step()
 
@@ -57,17 +55,20 @@ def train_epoch(
         noise = torch.randn(b_size, latent_dim, device=device)
         fake_labels = torch.randint(0, num_classes, (b_size,), device=device)
         fake_images = generator(noise, fake_labels)
-        gen_target = torch.ones(b_size, device=device)
-        output = discriminator(fake_images, fake_labels).view(-1)
-        g_loss = criterion(output, gen_target)
+        fake_output, fake_class_logits = discriminator(fake_images, fake_labels)
+
+        g_adv_loss = criterion(fake_output, torch.ones(b_size, device=device))
+        g_class_loss = class_loss_fn(fake_class_logits, fake_labels)
+
+        g_loss = g_adv_loss + g_class_loss
         g_loss.backward()
+        torch.nn.utils.clip_grad_norm_(generator.parameters(), max_norm=5.0)
         generator_optimizer.step()
 
         g_loss_total += g_loss.item()
         d_loss_total += d_loss.item()
 
     return g_loss_total / len(train_loader), d_loss_total / len(train_loader)
-
 
 def test_epoch(
     generator: nn.Module,

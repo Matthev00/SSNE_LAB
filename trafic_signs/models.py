@@ -39,17 +39,11 @@ class Generator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    """
-    Args:
-        ndf (int): Number of filters in first layer of Discriminator.
-        num_classes (int): Number of classes.
-    """
-
     def __init__(self, ndf: int, num_classes: int):
         super().__init__()
         self.label_emb = nn.Embedding(num_classes, 32 * 32)
 
-        self.model = nn.Sequential(
+        self.feature_extractor = nn.Sequential(
             nn.Conv2d(3 + 1, ndf, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
@@ -58,10 +52,16 @@ class Discriminator(nn.Module):
             nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ndf * 4),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(ndf * 4, 1, 4, 1, 0, bias=False),
         )
 
-    def forward(self, img: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+        self.real_fake_head = nn.Conv2d(ndf * 4, 1, 4, 1, 0, bias=False)
+        self.class_head = nn.Conv2d(ndf * 4, num_classes, 4, 1, 0, bias=False)
+
+    def forward(self, img: torch.Tensor, labels: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         label_map = self.label_emb(labels).view(-1, 1, 32, 32)
         x = torch.cat([img, label_map], dim=1)
-        return self.model(x)
+        features = self.feature_extractor(x)
+        real_fake = self.real_fake_head(features).view(-1)
+        class_logits = self.class_head(features).squeeze()
+        return real_fake, class_logits
+
