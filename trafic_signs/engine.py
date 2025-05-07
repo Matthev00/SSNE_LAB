@@ -2,6 +2,7 @@ from pathlib import Path
 import subprocess
 from typing import Callable
 
+import wandb
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -10,9 +11,15 @@ from data_utils import denormalize
 
 
 def train_epoch(
-    generator, discriminator, train_loader,
-    generator_optimizer, discriminator_optimizer,
-    criterion, latent_dim, num_classes, device
+    generator, 
+    discriminator, 
+    train_loader,
+    generator_optimizer, 
+    discriminator_optimizer,
+    criterion, 
+    latent_dim, 
+    num_classes, 
+    device
 ) -> tuple[float, float]:
     
     class_loss_fn = nn.CrossEntropyLoss()
@@ -136,6 +143,17 @@ def train(
         D_losses (List[float])
         FID_scores (List[float])
     """
+    wandb.init(
+        project="trafic_signs",
+        config={
+            "latent_dim": latent_dim,
+            "num_classes": num_classes,
+            "num_epochs": num_epochs,
+            "fid_sample_count": fid_sample_count,
+            "fid_interval": fid_interval,
+        }
+    )
+
     G_losses, D_losses, FID_scores = [], [], []
 
     for epoch in range(1, num_epochs + 1):
@@ -156,6 +174,11 @@ def train(
 
         G_losses.append(g_loss)
         D_losses.append(d_loss)
+        wandb.log({
+            "g_loss": g_loss,
+            "d_loss": d_loss,
+        }, step=epoch)
+
 
         print(f"[Epoch {epoch:03}] G_loss: {g_loss:.4f} | D_loss: {d_loss:.4f}")
 
@@ -174,7 +197,11 @@ def train(
             )
             FID_scores.append(fid)
             print(f"[FID] Epoch {epoch}: FID = {fid:.2f}")
+            wandb.log({
+                "FID": fid,
+            }, step=epoch)
 
+    wandb.finish()
     return G_losses, D_losses, FID_scores
 
 

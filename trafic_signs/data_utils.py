@@ -29,7 +29,7 @@ def get_dataloaders(
     transform = transforms.Compose(
         [
             transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            transforms.Normalize((0.0, 0.0, 0.0), (0.5, 0.5, 0.5))
 
         ]
     )
@@ -71,7 +71,7 @@ def denormalize(img: torch.Tensor) -> torch.Tensor:
     Returns:
         torch.Tensor: Denormalized image tensor.
     """
-    mean = torch.tensor([0.5, 0.5, 0.5])[:, None, None]
+    mean = torch.tensor([0.0, 0.0, 0.0])[:, None, None]
     std = torch.tensor([0.5, 0.5, 0.5])[:, None, None]
     return img * std + mean
 
