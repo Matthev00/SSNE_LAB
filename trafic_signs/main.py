@@ -18,26 +18,26 @@ def main():
     # === Hyperparameters ===
     DATA_DIR = Path("trafic_signs/data/trafic_32")
     BATCH_SIZE = 64
-    LATENT_DIM = 100
+    LATENT_DIM = 128
     NUM_CLASSES = 43
     NUM_EPOCHS = 100
     FID_SAMPLE_COUNT = 1000
-    MAX_SAMPLES = 10000
-    EMBEDDING_DIM = 50
+    MAX_SAMPLES = None
+    EMBEDDING_DIM = 64
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # === Load data ===
     train_loader, val_loader = get_dataloaders(DATA_DIR, BATCH_SIZE, MAX_SAMPLES, FID_SAMPLE_COUNT)
 
     # === Models ===
-    generator = Generator(nz=LATENT_DIM, ngf=64, num_classes=43, embedding_dim=EMBEDDING_DIM).to(DEVICE)
-    discriminator = Discriminator(ndf=32, num_classes=2, embedding_dim=EMBEDDING_DIM).to(DEVICE)
+    generator = Generator(nz=LATENT_DIM, ngf=96, num_classes=NUM_CLASSES, embedding_dim=EMBEDDING_DIM).to(DEVICE)
+    discriminator = Discriminator(ndf=96, num_classes=NUM_CLASSES, embedding_dim=EMBEDDING_DIM).to(DEVICE)
     generator.apply(weights_init)
     discriminator.apply(weights_init)
 
     # === Optimizers and schedulers ===
     g_optimizer = optim.Adam(generator.parameters(), lr=2e-4, betas=(0.5, 0.999))
-    d_optimizer = optim.Adam(discriminator.parameters(), lr=2e-5, betas=(0.5, 0.999))
+    d_optimizer = optim.Adam(discriminator.parameters(), lr=2e-4, betas=(0.5, 0.999))
     g_scheduler = optim.lr_scheduler.StepLR(g_optimizer, step_size=30, gamma=0.5)
     d_scheduler = optim.lr_scheduler.StepLR(d_optimizer, step_size=30, gamma=0.5)
     criterion = nn.BCEWithLogitsLoss()
