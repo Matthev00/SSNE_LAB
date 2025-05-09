@@ -141,14 +141,6 @@ def train(
     compute_fid_fn: Callable[[str, str], float],
     fid_interval: int = 5,
 ) -> tuple[list[float], list[float], list[float]]:
-    """
-    Główna funkcja trenująca GAN przez wiele epok, z obliczaniem FID co N epok.
-
-    Returns:
-        G_losses (List[float])
-        D_losses (List[float])
-        FID_scores (List[float])
-    """
     wandb.init(
         project="trafic_signs",
         config={

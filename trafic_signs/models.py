@@ -53,7 +53,7 @@ class Discriminator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
         )
 
-        self.adv_head = nn.Conv2d(ndf * 4, 1, 4, 1, 0, bias=False)  # real/fake
+        self.adv_head = nn.Conv2d(ndf * 4, 1, 4, 1, 0, bias=False)  
         self.cls_head = nn.Conv2d(ndf * 4, num_classes, 4, 1, 0, bias=False)
 
     def forward(self, img: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
