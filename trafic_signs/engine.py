@@ -35,8 +35,8 @@ def train_epoch(
         b_size = real_images.size(0)
 
         noise = torch.randn(b_size, latent_dim, device=device)
-        ones = torch.ones(b_size, device=device)
-        zeros = torch.zeros(b_size, device=device)
+        ones = torch.ones(b_size, 1, device=device)
+        zeros = torch.zeros(b_size, 1, device=device)
 
         # === Generator ===
         generator_optimizer.zero_grad()
@@ -52,12 +52,12 @@ def train_epoch(
         discriminator_optimizer.zero_grad()
 
         real_preds = discriminator(real_images, real_labels)
-        fake_preds = discriminator(fake_images.detach(), real_labels)
-
         d_loss_real = criterion(real_preds, ones)
-        d_loss_fake = criterion(fake_preds, zeros)
-        d_loss = (d_loss_real + d_loss_fake) / 2
 
+        fake_preds = discriminator(fake_images.detach(), real_labels)
+        d_loss_fake = criterion(fake_preds, zeros)
+
+        d_loss = (d_loss_real + d_loss_fake) / 2
         d_loss.backward()
         discriminator_optimizer.step()
 
@@ -103,12 +103,15 @@ def test_epoch(
     with torch.inference_mode():
         for i, label in enumerate(labels):
             z = torch.randn(64, latent_dim, device=device)
-            l = torch.tensor([label], device=device)
-            img = generator(z, l).squeeze(0).cpu()
+            l = torch.full((64,), label, device=device, dtype=torch.long)
+            imgs = generator(z, l).cpu()
 
-            img = (denormalize(img).clamp(0, 1) * 255).byte()
-
-            ToPILImage()(img).save(out_dir / f"{i:04}.png")
+            for j, img in enumerate(imgs):
+                img = denormalize(img)
+                img = img.clamp(0, 1).mul(255).to(torch.uint8)
+                img = img.cpu()
+                to_pil = ToPILImage()
+                to_pil(img).save(out_dir / f"{i:04}_{j:02}.png")
 
     return compute_fid_fn(str(fid_reference_dir), str(out_dir))
 
