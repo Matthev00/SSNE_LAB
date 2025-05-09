@@ -52,10 +52,12 @@ class Discriminator(nn.Module):
             nn.BatchNorm2d(ndf * 4),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(ndf * 4, 1, 4, 1, 0, bias=False),
-            nn.Sigmoid(),
         )
 
-    def forward(self, img: torch.Tensor, labels: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        label_embeddings = self.label_emb(labels).unsqueeze(-1).unsqueeze(-1).expand(-1, -1, img.size(2), img.size(3))
-        x = torch.cat([img, label_embeddings], dim=1)
-        return self.model(x).view(-1, 1)
+    def forward(self, img: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        y_embedded: torch.Tensor = self.label_emb(y)
+        y_embedded_spatial = y_embedded.unsqueeze(-1).unsqueeze(-1)
+        y_embedded_spatial = y_embedded_spatial.expand(-1, -1, img.size(2), img.size(3))
+
+        combined_input = torch.cat([img, y_embedded_spatial], dim=1)
+        return self.model(combined_input).view(-1, 1)
