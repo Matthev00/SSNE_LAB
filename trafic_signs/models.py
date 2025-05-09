@@ -42,7 +42,7 @@ class Discriminator(nn.Module):
         super().__init__()
         self.label_emb = nn.Embedding(num_classes, embedding_dim)
 
-        self.model = nn.Sequential(
+        self.feature_extractor = nn.Sequential(
             nn.Conv2d(3 + embedding_dim, ndf, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
@@ -51,13 +51,17 @@ class Discriminator(nn.Module):
             nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ndf * 4),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(ndf * 4, 1, 4, 1, 0, bias=False),
         )
 
-    def forward(self, img: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        y_embedded: torch.Tensor = self.label_emb(y)
-        y_embedded_spatial = y_embedded.unsqueeze(-1).unsqueeze(-1)
-        y_embedded_spatial = y_embedded_spatial.expand(-1, -1, img.size(2), img.size(3))
+        self.adv_head = nn.Conv2d(ndf * 4, 1, 4, 1, 0, bias=False)  # real/fake
+        self.cls_head = nn.Conv2d(ndf * 4, num_classes, 4, 1, 0, bias=False)
 
-        combined_input = torch.cat([img, y_embedded_spatial], dim=1)
-        return self.model(combined_input).view(-1, 1)
+    def forward(self, img: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        y_emb = self.label_emb(y).unsqueeze(-1).unsqueeze(-1)
+        y_emb = y_emb.expand(-1, -1, img.size(2), img.size(3))
+        x = torch.cat([img, y_emb], dim=1)
+
+        features = self.feature_extractor(x)
+        real_fake_logits = self.adv_head(features).view(-1, 1)
+        class_logits = self.cls_head(features).view(-1, self.label_emb.num_embeddings)
+        return real_fake_logits, class_logits

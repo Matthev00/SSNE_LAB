@@ -1,9 +1,13 @@
 from pathlib import Path
 
 from utils import set_seeds, weights_init
-from data_utils import get_dataloaders, export_real_images_for_fid, build_class_distribution
+from data_utils import (
+    get_dataloaders,
+    export_real_images_for_fid,
+    build_class_distribution,
+)
 from models import Generator, Discriminator
-from engine import train, compute_fid  
+from engine import train, compute_fid
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -27,11 +31,17 @@ def main():
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # === Load data ===
-    train_loader, val_loader = get_dataloaders(DATA_DIR, BATCH_SIZE, MAX_SAMPLES, FID_SAMPLE_COUNT)
+    train_loader, val_loader = get_dataloaders(
+        DATA_DIR, BATCH_SIZE, MAX_SAMPLES, FID_SAMPLE_COUNT
+    )
 
     # === Models ===
-    generator = Generator(nz=LATENT_DIM, ngf=96, num_classes=NUM_CLASSES, embedding_dim=EMBEDDING_DIM).to(DEVICE)
-    discriminator = Discriminator(ndf=96, num_classes=NUM_CLASSES, embedding_dim=EMBEDDING_DIM).to(DEVICE)
+    generator = Generator(
+        nz=LATENT_DIM, ngf=96, num_classes=NUM_CLASSES, embedding_dim=EMBEDDING_DIM
+    ).to(DEVICE)
+    discriminator = Discriminator(
+        ndf=96, num_classes=NUM_CLASSES, embedding_dim=EMBEDDING_DIM
+    ).to(DEVICE)
     generator.apply(weights_init)
     discriminator.apply(weights_init)
 
@@ -70,7 +80,7 @@ def main():
         fid_output_dir=fid_output_dir,
         fid_reference_dir=fid_reference_dir,
         compute_fid_fn=compute_fid,
-        fid_interval=5
+        fid_interval=5,
     )
 
 

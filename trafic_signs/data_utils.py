@@ -27,11 +27,7 @@ def get_dataloaders(
     """
     NUM_WORKERS = os.cpu_count()
     transform = transforms.Compose(
-        [
-            transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-
-        ]
+        [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
     )
 
     dataset = ImageFolder(data_dir, transform=transform)
@@ -98,18 +94,55 @@ def export_real_images_for_fid(
             pil_img.save(output_dir / f"{saved:04}.png")
             saved += 1
 
+
 def build_class_distribution() -> dict[int, float]:
     """
     Build class distribution for FID calculation.
     """
     class_counts = {
-        0: 210, 1: 2220, 2: 2250, 3: 1410, 4: 1980, 5: 1860, 6: 420,
-        7: 1440, 8: 1410, 9: 1470, 10: 2010, 11: 1320, 12: 2100, 13: 2160,
-        14: 780, 15: 630, 16: 420, 17: 1110, 18: 1200, 19: 210, 20: 360,
-        21: 330, 22: 390, 23: 510, 24: 270, 25: 1500, 26: 600, 27: 240,
-        28: 540, 29: 270, 30: 450, 31: 780, 32: 240, 33: 689, 34: 420,
-        35: 1200, 36: 390, 37: 210, 38: 2070, 39: 300, 40: 360, 41: 240,
-        42: 240
+        0: 210,
+        1: 2220,
+        2: 2250,
+        3: 1410,
+        4: 1980,
+        5: 1860,
+        6: 420,
+        7: 1440,
+        8: 1410,
+        9: 1470,
+        10: 2010,
+        11: 1320,
+        12: 2100,
+        13: 2160,
+        14: 780,
+        15: 630,
+        16: 420,
+        17: 1110,
+        18: 1200,
+        19: 210,
+        20: 360,
+        21: 330,
+        22: 390,
+        23: 510,
+        24: 270,
+        25: 1500,
+        26: 600,
+        27: 240,
+        28: 540,
+        29: 270,
+        30: 450,
+        31: 780,
+        32: 240,
+        33: 689,
+        34: 420,
+        35: 1200,
+        36: 390,
+        37: 210,
+        38: 2070,
+        39: 300,
+        40: 360,
+        41: 240,
+        42: 240,
     }
     total = sum(class_counts.values())
     return {cls: count / total for cls, count in class_counts.items()}
