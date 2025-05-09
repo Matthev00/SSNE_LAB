@@ -26,6 +26,8 @@ def train_epoch(
 
     g_loss_total = 0.0
     d_loss_total = 0.0
+    d_loss_real_total = 0.0
+    d_loss_fake_total = 0.0
 
     for real_images, real_labels in train_loader:
         real_images = real_images.to(device)
@@ -61,8 +63,17 @@ def train_epoch(
 
         g_loss_total += g_loss.item()
         d_loss_total += d_loss.item()
+        d_loss_real_total += d_loss_real.item()
+        d_loss_fake_total += d_loss_fake.item()
 
-    return g_loss_total / len(train_loader), d_loss_total / len(train_loader)
+
+    return (
+        g_loss_total / len(train_loader),
+        d_loss_total / len(train_loader),
+        d_loss_real_total / len(train_loader),
+        d_loss_fake_total / len(train_loader),
+    )
+
 
 def test_epoch(
     generator: nn.Module,
@@ -144,7 +155,7 @@ def train(
     G_losses, D_losses, FID_scores = [], [], []
 
     for epoch in range(1, num_epochs + 1):
-        g_loss, d_loss = train_epoch(
+        g_loss, d_loss, d_loss_real, d_loss_fake = train_epoch(
             generator,
             discriminator,
             train_loader,
@@ -164,6 +175,8 @@ def train(
         wandb.log({
             "g_loss": g_loss,
             "d_loss": d_loss,
+            "d_loss_real": d_loss_real,
+            "d_loss_fake": d_loss_fake,
         }, step=epoch)
 
 
