@@ -8,48 +8,42 @@ import wandb
 
 def main():    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    wandb.init(project="compositor_classification")
 
-    INPUT_SIZE = 1
-    HIDDEN_SIZE = 128
-    NUM_LAYERS = 2
-    OUTPUT_SIZE = 5
-    LR = 0.001
-    BATCH_SIZE = 50
-    NUM_EPOCHS = 10
-    STEP_SIZE = 5
-    GAMMA = 0.1
+    config = wandb.config
+
+    INPUT_SIZE = config.input_size
+    HIDDEN_SIZE = config.hidden_size
+    NUM_LAYERS = config.num_layers
+    OUTPUT_SIZE = config.output_size
+    LR = config.lr
+    BATCH_SIZE = config.batch_size
+    NUM_EPOCHS = config.num_epochs
+    STEP_SIZE = config.step_size
+    GAMMA = config.gamma
+    DROPOUT = config.dropout
+    WEIGHT_DECAY = config.weight_decay
 
     model = LSTMClassifier(
         input_size=INPUT_SIZE, 
         hidden_size=HIDDEN_SIZE, 
         num_layers=NUM_LAYERS, 
-        output_size=OUTPUT_SIZE
+        output_size=OUTPUT_SIZE,
+        dropout=DROPOUT
     ).to(device)
     optimizer = torch.optim.Adam(
         model.parameters(), 
-        lr=LR
+        lr=LR,
+        weight_decay=WEIGHT_DECAY
     )
     loss_fn = nn.CrossEntropyLoss()
-    scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer, 
-        step_size=STEP_SIZE, 
-        gamma=GAMMA
-    )
-
-    wandb.init(
-        project="compositor_classification",
-        config={
-            "input_size": INPUT_SIZE,
-            "hidden_size": HIDDEN_SIZE,
-            "num_layers": NUM_LAYERS,
-            "output_size": OUTPUT_SIZE,
-            "learning_rate": LR,
-            "batch_size": BATCH_SIZE,
-            "num_epochs": NUM_EPOCHS,
-            "step_size": STEP_SIZE,
-            "gamma": GAMMA
-        }
-    )
+    if config.scheduler_type == "StepLR":
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
+    elif config.scheduler_type == "ReduceLROnPlateau":
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=2)
+    elif config.scheduler_type == "CosineAnnealingLR":
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config.num_epochs)
 
     train_dataloader, val_dataloader = get_data_loaders_equal_distribution(BATCH_SIZE)
 

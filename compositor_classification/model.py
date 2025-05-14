@@ -4,7 +4,15 @@ from torch.nn.utils.rnn import pad_packed_sequence
 
 
 class LSTMClassifier(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, output_size):
+    def __init__(
+        self, 
+        input_size, 
+        hidden_size, 
+        num_layers, 
+        output_size,
+        bidirectional=False,
+        dropout=0.5,
+    ):
         super(LSTMClassifier, self).__init__()
         self.proj_size = output_size
         self.num_layers = num_layers
@@ -13,7 +21,8 @@ class LSTMClassifier(nn.Module):
             input_size=input_size, 
             hidden_size=hidden_size, 
             num_layers=num_layers,
-            batch_first=True
+            batch_first=True,
+            dropout=dropout,
         )
         self.fc = nn.Linear(hidden_size, output_size)
 
