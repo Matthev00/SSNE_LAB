@@ -59,6 +59,9 @@ def train_epoch(
     for inputs, targets, input_len in tqdm(train_loader):
         inputs = inputs.to(device).unsqueeze(-1)
         targets = targets.to(device)
+        
+        # hidden, state = model.init_hidden(inputs.size(0))
+        # hidden, state = hidden.to(device), state.to(device)
 
         optimizer.zero_grad()
 
@@ -100,6 +103,9 @@ def val_epoch(
         for inputs, targets, input_len in tqdm(val_loader):
             inputs = inputs.to(device).unsqueeze(-1)
             targets = targets.to(device)
+            
+            # hidden, state = model.init_hidden(inputs.size(0))
+            # hidden, state = hidden.to(device), state.to(device)
 
             inputs_packed = pack_padded_sequence(inputs, input_len, batch_first=True, enforce_sorted=False)
             preds, (hidden, state) = model(inputs_packed, (hidden, state))

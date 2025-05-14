@@ -1,10 +1,9 @@
-from data_utils import get_data_loaders
+from data_utils import get_data_loaders_equal_distribution
 from model import LSTMClassifier
 from engine import train
 
 import torch
 import torch.nn as nn
-from torch.nn.utils.rnn import pack_padded_sequence
 import wandb
 
 def main():    
@@ -52,7 +51,7 @@ def main():
         }
     )
 
-    train_dataloader, val_dataloader = get_data_loaders(BATCH_SIZE)
+    train_dataloader, val_dataloader = get_data_loaders_equal_distribution(BATCH_SIZE)
 
     train(
         model=model,

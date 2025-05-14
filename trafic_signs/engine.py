@@ -141,16 +141,6 @@ def train(
     compute_fid_fn: Callable[[str, str], float],
     fid_interval: int = 5,
 ) -> tuple[list[float], list[float], list[float]]:
-    wandb.init(
-        project="trafic_signs",
-        config={
-            "latent_dim": latent_dim,
-            "num_classes": num_classes,
-            "num_epochs": num_epochs,
-            "fid_sample_count": fid_sample_count,
-            "fid_interval": fid_interval,
-        },
-    )
 
     G_losses, D_losses, FID_scores = [], [], []
 

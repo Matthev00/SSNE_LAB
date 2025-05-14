@@ -2,6 +2,8 @@ import torch
 import pickle
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset, DataLoader
+from collections import Counter
+from sklearn.model_selection import train_test_split
 
 
 class VariableLenDataset(Dataset):
@@ -54,4 +56,54 @@ def get_data_loaders(batch_size=50):
     )
 
     return train_loader, val_loader
+
+
+def get_data_loaders_equal_distribution(batch_size=50):
+    with open('compositor_classification/data/train.pkl', 'rb') as f:
+        train_data = pickle.load(f)
+
+    data = []
+    targets = []
+    max_val = -1
+    for sample in train_data:
+        data.append(sample[0])
+        targets.append(sample[1])
+        max_val = max(max_val, max(sample[0]))
+
+    data = [(x / max_val) for x in data]
+
+    X_train, X_val, y_train, y_val = train_test_split(
+        data, targets, test_size=0.2, stratify=targets, random_state=42
+    )
+
+    train_set = VariableLenDataset(X_train, y_train)
+    val_set = VariableLenDataset(X_val, y_val)
+
+    train_loader = DataLoader(
+        train_set, batch_size=batch_size, shuffle=True, collate_fn=pad_collate
+    )
+    val_loader = DataLoader(
+        val_set, batch_size=batch_size, shuffle=False, drop_last=False, collate_fn=pad_collate
+    )
+
+    return train_loader, val_loader
+
+
+def get_class_distribution(dataloader, name="train"):
+    all_labels = []
+    for _, targets, _ in dataloader:
+        all_labels.extend(targets.tolist())
+    
+    label_counts = Counter(all_labels)
+    print(f"\nRozkład klas w zbiorze {name}:")
+    for label, count in sorted(label_counts.items()):
+        print(f"  Klasa {label}: {count} próbek")
+
+if __name__ == "__main__":
+    train_loader, val_loader = get_data_loaders()
+    get_class_distribution(train_loader, "train")
+    get_class_distribution(val_loader, "val")
+    equal_train_loader, equal_val_loader = get_data_loaders_equal_distribution()
+    get_class_distribution(equal_train_loader, "train (equal distribution)")
+    get_class_distribution(equal_val_loader, "val (equal distribution)")
 
