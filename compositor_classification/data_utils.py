@@ -4,6 +4,8 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset, DataLoader
 from collections import Counter
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
 
 
 class VariableLenDataset(Dataset):
@@ -31,7 +33,7 @@ def pad_collate(batch, pad_value=0):
     return xx_pad, yy, x_lens
 
 
-def get_data_loaders(batch_size=50):
+def get_data_loaders(batch_size: int = 50):
     with open('compositor_classification/data/train.pkl', 'rb') as f:
         train_data = pickle.load(f)
 
@@ -49,10 +51,10 @@ def get_data_loaders(batch_size=50):
     val_set = VariableLenDataset(data[train_indices:], targets[train_indices:])
 
     train_loader = DataLoader(
-        train_set, batch_size=50, shuffle=True, collate_fn=pad_collate
+        train_set, batch_size=batch_size, shuffle=True, collate_fn=pad_collate
     )
     val_loader = DataLoader(
-        val_set, batch_size=50, shuffle=False, drop_last=False, collate_fn=pad_collate
+        val_set, batch_size=batch_size, shuffle=False, drop_last=False, collate_fn=pad_collate
     )
 
     return train_loader, val_loader
@@ -64,27 +66,30 @@ def get_data_loaders_equal_distribution(batch_size=50):
 
     data = []
     targets = []
-    max_val = -1
-    for sample in train_data:
-        data.append(sample[0])
-        targets.append(sample[1])
-        max_val = max(max_val, max(sample[0]))
 
-    data = [(x / max_val) for x in data]
+    for x, y in train_data:
+        data.append(x)
+        targets.append(y)
+
+    all_flat = torch.tensor([item for seq in data for item in seq], dtype=torch.float32).reshape(-1, 1)
+    scaler = StandardScaler()
+    scaler.fit(all_flat.numpy())
+
+    with open("compositor_classification/data/normalizer.pkl", "wb") as f:
+        pickle.dump(scaler, f)
+
+    norm_data = [scaler.transform(torch.tensor(seq, dtype=torch.float32).reshape(-1, 1)).squeeze(1).tolist()
+                 for seq in data]
 
     X_train, X_val, y_train, y_val = train_test_split(
-        data, targets, test_size=0.2, stratify=targets, random_state=42
+        norm_data, targets, test_size=0.2, stratify=targets, random_state=42
     )
 
     train_set = VariableLenDataset(X_train, y_train)
     val_set = VariableLenDataset(X_val, y_val)
 
-    train_loader = DataLoader(
-        train_set, batch_size=batch_size, shuffle=True, collate_fn=pad_collate
-    )
-    val_loader = DataLoader(
-        val_set, batch_size=batch_size, shuffle=False, drop_last=False, collate_fn=pad_collate
-    )
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=pad_collate)
+    val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False, drop_last=False, collate_fn=pad_collate)
 
     return train_loader, val_loader
 
