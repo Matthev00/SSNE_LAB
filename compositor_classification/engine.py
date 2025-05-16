@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
-from torch.nn.utils.rnn import pack_padded_sequence
-import wandb
 from tqdm import tqdm
+
+import wandb
+
 
 def train(
     model: nn.Module,
@@ -12,6 +13,7 @@ def train(
     scheduler: torch.optim.lr_scheduler._LRScheduler,
     loss_fn: nn.Module,
     num_epochs: int,
+    class_names: list[str],
     device: torch.device,
 ) -> None:
 
@@ -23,13 +25,16 @@ def train(
             loss_fn,
             device,
         )
-        val_loss, val_accuracy = val_epoch(
+        val_loss, all_preds, all_targets = val_epoch(
             model,
             val_loader,
             loss_fn,
             device,
         )
         scheduler.step()
+        val_accuracy = (
+            (torch.tensor(all_preds) == torch.tensor(all_targets)).float().mean().item()
+        )
 
         wandb.log(
             {
@@ -40,7 +45,17 @@ def train(
                 "val_accuracy": val_accuracy,
             }
         )
+    wandb.log(
+        {
+            "val_confusion_matrix": wandb.plot.confusion_matrix(
+                y_true=all_targets,
+                preds=all_preds,
+                class_names=class_names,
+            )
+        }
+    )
     wandb.finish()
+
 
 def train_epoch(
     model: nn.Module,
@@ -54,31 +69,21 @@ def train_epoch(
     total_correct = 0
     total_samples = 0
 
-    hidden, state = model.init_hidden(next(iter(train_loader))[0].size(0))
-    hidden, state = hidden.to(device), state.to(device)
-    for inputs, targets, input_len in tqdm(train_loader):
+    for inputs, targets in tqdm(train_loader):
         inputs = inputs.to(device).unsqueeze(-1)
         targets = targets.to(device)
-        
-        # hidden, state = model.init_hidden(inputs.size(0))
-        # hidden, state = hidden.to(device), state.to(device)
 
         optimizer.zero_grad()
 
-        inputs_packed = pack_padded_sequence(inputs, input_len, batch_first=True, enforce_sorted=False)
-
-        preds, (hidden, state) = model(inputs_packed, (hidden, state))
-        loss = loss_fn(preds, targets)
+        logits = model(inputs)
+        preds = torch.argmax(torch.softmax(logits, dim=1), dim=1)
+        loss = loss_fn(logits, targets)
         loss.backward()
         optimizer.step()
 
         total_loss += loss.item()
-        _, predicted_classes = torch.max(preds, 1)
-        total_correct += (predicted_classes == targets).sum().item()
+        total_correct += (preds == targets).sum().item()
         total_samples += targets.size(0)
-
-        hidden = hidden.detach()
-        state = state.detach()
 
     avg_loss = total_loss / len(train_loader)
     accuracy = total_correct / total_samples
@@ -91,32 +96,26 @@ def val_epoch(
     val_loader: torch.utils.data.DataLoader,
     loss_fn: nn.Module,
     device: torch.device,
-) -> tuple[float, float]:
+) -> tuple[float, list[int], list[int]]:
     model.eval()
     total_loss = 0.0
-    total_correct = 0
-    total_samples = 0
+    all_preds = []
+    all_targets = []
 
-    hidden, state = model.init_hidden(next(iter(val_loader))[0].size(0))
-    hidden, state = hidden.to(device), state.to(device)
-    with torch.no_grad():
-        for inputs, targets, input_len in tqdm(val_loader):
+    with torch.inference_mode():
+        for inputs, targets in tqdm(val_loader):
             inputs = inputs.to(device).unsqueeze(-1)
             targets = targets.to(device)
-            
-            # hidden, state = model.init_hidden(inputs.size(0))
-            # hidden, state = hidden.to(device), state.to(device)
 
-            inputs_packed = pack_padded_sequence(inputs, input_len, batch_first=True, enforce_sorted=False)
-            preds, (hidden, state) = model(inputs_packed, (hidden, state))
-            loss = loss_fn(preds, targets)
+            logits = model(inputs)
+            preds = torch.argmax(torch.softmax(logits, dim=1), dim=1)
+            loss = loss_fn(logits, targets)
 
             total_loss += loss.item()
-            _, predicted_classes = torch.max(preds, 1)
-            total_correct += (predicted_classes == targets).sum().item()
-            total_samples += targets.size(0)
+
+            all_preds.extend(preds.cpu().numpy().tolist())
+            all_targets.extend(targets.cpu().numpy().tolist())
 
     avg_loss = total_loss / len(val_loader)
-    accuracy = total_correct / total_samples
 
-    return avg_loss, accuracy
+    return avg_loss, all_targets, all_preds
