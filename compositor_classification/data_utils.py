@@ -23,6 +23,19 @@ class VariableLenDataset(Dataset):
         return in_data, target
 
 
+class TestDataset(Dataset):
+    def __init__(self, in_data):
+        self.data = in_data
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        in_data = self.data[idx]
+        in_data = torch.tensor(in_data, dtype=torch.float32)
+        return in_data
+
+
 def pad_collate(batch, pad_value=0):
     xx, yy = zip(*batch)
     xx = [
