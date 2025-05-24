@@ -36,6 +36,16 @@ class TestDataset(Dataset):
         return in_data
 
 
+def test_pad_collate(batch, pad_value=0):
+    xx = [
+        torch.tensor(x, dtype=torch.float32) if not isinstance(x, torch.Tensor) else x
+        for x in batch
+    ]
+    xx_pad = pad_sequence(xx, batch_first=True, padding_value=pad_value)
+
+    return xx_pad
+
+
 def pad_collate(batch, pad_value=0):
     xx, yy = zip(*batch)
     xx = [

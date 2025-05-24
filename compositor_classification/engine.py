@@ -43,6 +43,7 @@ def train(
                 "train_accuracy": accuracy,
                 "val_loss": val_loss,
                 "val_accuracy": val_accuracy,
+                "avg_accuracy": (accuracy + val_accuracy) / 2,
             }
         )
     wandb.log(

@@ -5,7 +5,11 @@ import random
 import numpy as np
 import torch
 import torch.nn as nn
-from data_utils import TestDataset, get_data_loaders_equal_distribution, pad_collate
+from data_utils import (
+    TestDataset,
+    get_data_loaders_equal_distribution,
+    test_pad_collate,
+)
 from model import LSTMClassifier
 from torch.utils.data import DataLoader
 
@@ -88,14 +92,14 @@ def main():
 
     test_dataset = TestDataset(norm_test_data)
     test_loader = DataLoader(
-        test_dataset, batch_size=BATCH_SIZE, shuffle=False, collate_fn=pad_collate
+        test_dataset, batch_size=BATCH_SIZE, shuffle=False, collate_fn=test_pad_collate
     )
 
     model.eval()
     predictions = []
     with torch.inference_mode():
         for inputs in test_loader:
-            inputs = inputs.to(device)
+            inputs = inputs.to(device).unsqueeze(-1)
             logits = model(inputs)
             preds = torch.argmax(torch.softmax(logits, dim=1), dim=1)
             predictions.extend(preds.cpu().numpy())
