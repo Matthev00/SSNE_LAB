@@ -6,6 +6,8 @@ from torch.nn.utils.rnn import pad_packed_sequence
 class LSTMClassifier(nn.Module):
     def __init__(
         self,
+        vocab_size,
+        embedding_dim,
         input_size,
         hidden_size,
         num_layers,
@@ -18,8 +20,10 @@ class LSTMClassifier(nn.Module):
         self.num_layers = num_layers
         self.hidden_size = hidden_size
         self.bidirectional = bidirectional
+        
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
         self.lstm = nn.LSTM(
-            input_size=input_size,
+            input_size=embedding_dim,
             hidden_size=hidden_size,
             num_layers=num_layers,
             batch_first=True,
@@ -39,6 +43,7 @@ class LSTMClassifier(nn.Module):
         Returns:
             torch.Tensor: Output predictions of shape (batch_size, output_size).
         """
+        x = self.embedding(x)
         _, (hidden, _) = self.lstm(x)
 
         if self.bidirectional:

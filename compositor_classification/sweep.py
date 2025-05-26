@@ -19,6 +19,7 @@ sweep_config = {
         "weight_decay": {"values": [0.0, 1e-5, 1e-4, 1e-3]},
         "scheduler_type": {"values": ["StepLR"]},
         "bidirectional": {"values": [True, False]},
+        "embedding_dim": {"values": [32, 64, 128]},
     },
 }
 

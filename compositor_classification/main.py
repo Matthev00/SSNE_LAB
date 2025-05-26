@@ -3,7 +3,7 @@ import random
 import numpy as np
 import torch
 import torch.nn as nn
-from data_utils import get_data_loaders_equal_distribution
+from data_utils import get_data_loaders_equal_distribution, get_data_loaders_embedding
 from engine import train
 from model import LSTMClassifier
 
@@ -33,10 +33,13 @@ def main():
     DROPOUT = config.dropout
     WEIGHT_DECAY = config.weight_decay
     BIDIRECTIONAL = config.bidirectional
+    EMBEDDING_DIM = config.embedding_dim
 
     CLASS_NAMES = ["bach", "beethoven", "debussy", "scarlatti", "victoria"]
 
     model = LSTMClassifier(
+        vocab_size=182,
+        embedding_dim=EMBEDDING_DIM,
         input_size=INPUT_SIZE,
         hidden_size=HIDDEN_SIZE,
         num_layers=NUM_LAYERS,
@@ -46,7 +49,7 @@ def main():
     ).to(device)
 
     train_dataloader, val_dataloader, class_weights_tensor = (
-        get_data_loaders_equal_distribution(BATCH_SIZE)
+        get_data_loaders_embedding(BATCH_SIZE)
     )
 
     optimizer = torch.optim.AdamW(

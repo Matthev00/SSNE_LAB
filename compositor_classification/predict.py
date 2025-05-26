@@ -6,10 +6,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 from data_utils import (
-    TestDataset,
-    get_data_loaders_equal_distribution,
-    test_pad_collate,
+    EmbeddingTestDataset,
+    get_data_loaders_embedding,
 )
+from torch.nn.utils.rnn import pad_sequence
 from model import LSTMClassifier
 from torch.utils.data import DataLoader
 
@@ -26,21 +26,25 @@ def main():
     wandb.init(project="compositor_classification")
 
     INPUT_SIZE = 1
-    HIDDEN_SIZE = 256
-    NUM_LAYERS = 2
+    HIDDEN_SIZE = 64
+    NUM_LAYERS = 3
     OUTPUT_SIZE = 5
-    LR = 0.0001
-    BATCH_SIZE = 64
+    LR = 0.001
+    BATCH_SIZE = 32
     NUM_EPOCHS = 10
-    STEP_SIZE = 0.5
+    STEP_SIZE = 5
     GAMMA = 0.1
     DROPOUT = 0.1
-    WEIGHT_DECAY = 0.05
+    WEIGHT_DECAY = 0.001
+    EMBEDDING_DIM = 128
+    VOCAB_SIZE = 182
     BIDIRECTIONAL = True
 
     CLASS_NAMES = ["bach", "beethoven", "debussy", "scarlatti", "victoria"]
 
     model = LSTMClassifier(
+        embedding_dim=EMBEDDING_DIM,
+        vocab_size=VOCAB_SIZE,
         input_size=INPUT_SIZE,
         hidden_size=HIDDEN_SIZE,
         num_layers=NUM_LAYERS,
@@ -50,7 +54,7 @@ def main():
     ).to(device)
 
     train_dataloader, val_dataloader, class_weights_tensor = (
-        get_data_loaders_equal_distribution(BATCH_SIZE)
+        get_data_loaders_embedding(BATCH_SIZE)
     )
 
     optimizer = torch.optim.AdamW(
@@ -79,27 +83,23 @@ def main():
 
     with open("compositor_classification/data/test_no_target.pkl", "rb") as f:
         test_data = pickle.load(f)
+        
+    with open("compositor_classification/data/vocab_mapping.pkl", "rb") as f:
+        float2idx = pickle.load(f)
 
-    with open("compositor_classification/data/normalizer.pkl", "rb") as f:
-        scaler = pickle.load(f)
-
-    norm_test_data = [
-        scaler.transform(torch.tensor(seq, dtype=torch.float32).reshape(-1, 1))
-        .squeeze(1)
-        .tolist()
-        for seq in test_data
-    ]
-
-    test_dataset = TestDataset(norm_test_data)
+    test_dataset = EmbeddingTestDataset(test_data, float2idx)
     test_loader = DataLoader(
-        test_dataset, batch_size=BATCH_SIZE, shuffle=False, collate_fn=test_pad_collate
+        test_dataset, 
+        batch_size=BATCH_SIZE, 
+        shuffle=False,
+        collate_fn=lambda batch: pad_sequence(batch, batch_first=True, padding_value=float2idx[-1.0])
     )
 
     model.eval()
     predictions = []
     with torch.inference_mode():
         for inputs in test_loader:
-            inputs = inputs.to(device).unsqueeze(-1)
+            inputs = inputs.to(device)
             logits = model(inputs)
             preds = torch.argmax(torch.softmax(logits, dim=1), dim=1)
             predictions.extend(preds.cpu().numpy())

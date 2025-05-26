@@ -71,7 +71,7 @@ def train_epoch(
     total_samples = 0
 
     for inputs, targets in tqdm(train_loader):
-        inputs = inputs.to(device).unsqueeze(-1)
+        inputs = inputs.to(device)
         targets = targets.to(device)
 
         optimizer.zero_grad()
@@ -105,7 +105,7 @@ def val_epoch(
 
     with torch.inference_mode():
         for inputs, targets in tqdm(val_loader):
-            inputs = inputs.to(device).unsqueeze(-1)
+            inputs = inputs.to(device)
             targets = targets.to(device)
 
             logits = model(inputs)
